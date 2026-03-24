@@ -1,4 +1,4 @@
-EADME – HỆ THỐNG KIỂM SOÁT RA VÀO RFID
+README – HỆ THỐNG KIỂM SOÁT RA VÀO RFID
 1. Tổng quan
 
 Hệ thống kiểm soát ra vào sử dụng định danh UID (mô phỏng từ RFID) để:
