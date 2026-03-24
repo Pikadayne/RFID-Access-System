@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reports - RFID Access Control</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <h1>🔐 RFID KIỂM SOÁT NHÂN VIÊN RA VÀO</h1>
+            <div class="nav-links">
+                <a href="/">ĐIỂM DANH</a>
+                <a href="/users.html">NHÂN VIÊN</a>
+                <a href="/logs.html">LOGS</a>
+                <a href="/reports.html" class="active">BÁO CÁO</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container main-content">
+        <div class="card">
+            <h2>Reports & Statistics</h2>
+
+            <div class="filter-section">
+                <div class="form-group">
+                    <label>Start Date:</label>
+                    <input type="date" id="startDate">
+                </div>
+                <div class="form-group">
+                    <label>End Date:</label>
+                    <input type="date" id="endDate">
+                </div>
+                <button class="btn btn-primary" onclick="loadReports()">Generate Report</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>Summary</h3>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h4>Total Access</h4>
+                    <p id="totalAccess" class="stat-value">0</p>
+                </div>
+                <div class="stat-card">
+                    <h4>Granted</h4>
+                    <p id="grantedCount" class="stat-value stat-success">0</p>
+                </div>
+                <div class="stat-card">
+                    <h4>Denied</h4>
+                    <p id="deniedCount" class="stat-value stat-danger">0</p>
+                </div>
+                <div class="stat-card">
+                    <h4>Unique Users</h4>
+                    <p id="uniqueUsers" class="stat-value">0</p>
+                </div>
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <div class="card">
+                <h3>Access Distribution</h3>
+                <canvas id="accessChart"></canvas>
+            </div>
+            <div class="card">
+                <h3>Denial Reasons</h3>
+                <canvas id="denialChart"></canvas>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>Top 10 Users</h3>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>UID</th>
+                        <th>Name</th>
+                        <th>Access Count</th>
+                        <th>Last Access</th>
+                    </tr>
+                </thead>
+                <tbody id="topUsersBody">
+                    <tr><td colspan="4" class="text-center">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="/js/api.js"></script>
+    <script>
+        let accessChart, denialChart;
+
+        window.addEventListener('load', () => {
+            // Set default dates (last 30 days)
+            const endDate = new Date();
+            const startDate = new Date(endDate);
+            startDate.setDate(startDate.getDate() - 30);
+
+            document.getElementById('startDate').valueAsDate = startDate;
+            document.getElementById('endDate').valueAsDate = endDate;
+
+            loadReports();
+        });
+
+        async function loadReports() {
+            try {
+                const startDate = document.getElementById('startDate').value;
+                const endDate = document.getElementById('endDate').value;
+
+                const [summary, dailyStats, topUsers, denialReasons] = await Promise.all([
+                    apiCall('GET', `/api/reports/summary?startDate=${startDate}&endDate=${endDate}`),
+                    apiCall('GET', `/api/reports/daily-stats?startDate=${startDate}&endDate=${endDate}`),
+                    apiCall('GET', `/api/reports/top-users?startDate=${startDate}&endDate=${endDate}&limit=10`),
+                    apiCall('GET', `/api/reports/denial-reasons?startDate=${startDate}&endDate=${endDate}`)
+                ]);
+
+                displaySummary(summary.data);
+                displayAccessChart(summary.data);
+                displayDenialChart(denialReasons.data);
+                displayTopUsers(topUsers.data);
+            } catch (error) {
+                alert(`Error loading reports: ${error.message}`);
+            }
+        }
+
+        function displaySummary(data) {
+            document.getElementById('totalAccess').textContent = data.totalAccess;
+            document.getElementById('grantedCount').textContent = data.grantedCount;
+            document.getElementById('deniedCount').textContent = data.deniedCount;
+            document.getElementById('uniqueUsers').textContent = data.uniqueUsers;
+        }
+
+        function displayAccessChart(data) {
+            const ctx = document.getElementById('accessChart').getContext('2d');
+            
+            if (accessChart) accessChart.destroy();
+            
+            accessChart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: ['Granted', 'Denied'],
+                    datasets: [{
+                        data: [data.grantedCount, data.deniedCount],
+                        backgroundColor: ['#4CAF50', '#F44336']
+                    }]
+                }
+            });
+        }
+
+        function displayDenialChart(reasons) {
+            const ctx = document.getElementById('denialChart').getContext('2d');
+            
+            if (denialChart) denialChart.destroy();
+            
+            const labels = reasons.map(r => r.reason);
+            const counts = reasons.map(r => r.count);
+
+            denialChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Count',
+                        data: counts,
+                        backgroundColor: '#FF9800'
+                    }]
+                }
+            });
+        }
+
+        function displayTopUsers(users) {
+            const tbody = document.getElementById('topUsersBody');
+            if (!users || users.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center">No data</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = users.map(user => `
+                <tr>
+                    <td>${user.uid}</td>
+                    <td>${user.fullName}</td>
+                    <td>${user.accessCount}</td>
+                    <td>${new Date(user.lastAccess).toLocaleString()}</td>
+                </tr>
+            `).join('');
+        }
+    </script>
+</body>
+</html>

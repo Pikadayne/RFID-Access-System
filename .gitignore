@@ -1,0 +1,48 @@
+# Build outputs
+bin/
+obj/
+
+# Visual Studio cache and user-specific files
+.vs/
+*.user
+*.rsuser
+*.suo
+*.sln.docstates
+.vscode/
+
+# Configuration files with sensitive data
+appsettings.Development.json
+appsettings.*.json
+!appsettings.json
+
+# Local environment files
+.env
+secrets.json
+appsettings.Local.json
+
+# IDE files
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Optional npm/node modules (for frontend)
+node_modules/
+package-lock.json
+yarn.lock
+
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+
+# Logs
+logs/
+*.log

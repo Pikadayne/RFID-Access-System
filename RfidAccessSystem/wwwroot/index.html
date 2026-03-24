@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RFID Access Control System</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <h1>🔐 RFID KIỂM SOÁT NHÂN VIÊN RA VÀO</h1>
+            <div class="nav-links">
+                <a href="/" class="active">ĐIỂM DANH</a>
+                <a href="/users.html">NHÂN VIÊN</a>
+                <a href="/logs.html">LOGS</a>
+                <a href="/reports.html">BÁO CÁO</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container main-content">
+        <div class="card">
+            <h2>ĐIỂM DANH RFID</h2>
+            <p class="info">Nhập RFID để kiểm tra quyền truy cập</p>
+
+            <div class="form-group">
+                <label>RFID:</label>
+                <input type="text" id="uid" placeholder="Nhập RFID" autofocus>
+            </div>
+
+            <div class="form-group">
+                <label>Loại truy cập:</label>
+                <select id="accessType">
+                    <option value="ENTRY">ENTRY (Vào)</option>
+                    <option value="EXIT">EXIT (Ra)</option>
+                </select>
+            </div>
+
+            <button class="btn btn-primary" onclick="checkAccess()">✓ Kiểm tra</button>
+
+            <div id="resultContainer"></div>
+        </div>
+
+        <div class="card">
+            <h3>Demo Users</h3>
+            <table class="demo-table">
+                <tr>
+                    <th>UID</th>
+                    <th>Tên nhân viên</th>
+                    <th>Vị trí</th>
+                    <th>Hoạt động</th>
+                </tr>
+                <tr>
+                    <td>A1B2C3D4</td>
+                    <td>John Doe</td>
+                    <td>Employee</td>
+                    <td><button class="btn btn-small" onclick="fillUID('A1B2C3D4')">Use</button></td>
+                </tr>
+                <tr>
+                    <td>E5F6G7H8</td>
+                    <td>Jane Smith</td>
+                    <td>Employee</td>
+                    <td><button class="btn btn-small" onclick="fillUID('E5F6G7H8')">Use</button></td>
+                </tr>
+                <tr>
+                    <td>I9J0K1L2</td>
+                    <td>Bob Johnson</td>
+                    <td>Visitor</td>
+                    <td><button class="btn btn-small" onclick="fillUID('I9J0K1L2')">Use</button></td>
+                </tr>
+                <tr>
+                    <td>INVALID</td>
+                    <td>Non-existent User</td>
+                    <td>Test Denied</td>
+                    <td><button class="btn btn-small" onclick="fillUID('INVALID')">Use</button></td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <script src="/js/api.js"></script>
+    <script>
+        async function checkAccess() {
+            const uid = document.getElementById('uid').value.trim();
+            const accessType = document.getElementById('accessType').value;
+            const resultContainer = document.getElementById('resultContainer');
+
+            if (!uid) {
+                showError('Please enter UID', resultContainer);
+                return;
+            }
+
+            try {
+                const response = await apiCall('POST', '/api/access/check', {
+                    uid: uid,
+                    accessType: accessType,
+                    timestamp: new Date().toISOString()
+                });
+
+                if (response.access === 'granted') {
+                    showSuccess(response, resultContainer);
+                } else {
+                    showDenied(response, resultContainer);
+                }
+
+                // Clear input and focus
+                document.getElementById('uid').value = '';
+                document.getElementById('uid').focus();
+
+            } catch (error) {
+                showError(`Error: ${error.message}`, resultContainer);
+            }
+        }
+
+        function fillUID(uid) {
+            document.getElementById('uid').value = uid;
+            document.getElementById('uid').focus();
+        }
+
+        function showSuccess(data, container) {
+            container.innerHTML = `
+                <div class="result result-success">
+                    <div class="result-icon">✓</div>
+                    <h3>ACCESS GRANTED</h3>
+                    <p><strong>User:</strong> ${data.fullName || 'Unknown'}</p>
+                    <p><strong>Department:</strong> ${data.department || 'N/A'}</p>
+                    <p><strong>Message:</strong> ${data.message}</p>
+                    <p class="timestamp">Time: ${new Date().toLocaleTimeString()}</p>
+                </div>
+            `;
+        }
+
+        function showDenied(data, container) {
+            container.innerHTML = `
+                <div class="result result-denied">
+                    <div class="result-icon">✗</div>
+                    <h3>ACCESS DENIED</h3>
+                    <p><strong>Message:</strong> ${data.message}</p>
+                    <p><strong>Reason:</strong> ${data.reason || 'No reason provided'}</p>
+                    <p class="timestamp">Time: ${new Date().toLocaleTimeString()}</p>
+                </div>
+            `;
+        }
+
+        function showError(message, container) {
+            container.innerHTML = `
+                <div class="result result-error">
+                    <h3>ERROR</h3>
+                    <p>${message}</p>
+                </div>
+            `;
+        }
+
+        // Allow Enter key
+        document.getElementById('uid').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') checkAccess();
+        });
+    </script>
+</body>
+</html>

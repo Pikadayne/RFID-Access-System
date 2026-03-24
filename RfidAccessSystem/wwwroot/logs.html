@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LOGS - RFID KIỂM SOÁT NHÂN VIÊN RA VÀO</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <h1>🔐 RFID KIỂM SOÁT NHÂN VIÊN RA VÀO</h1>
+            <div class="nav-links">
+                <a href="/">ĐIỂM DANH</a>
+                <a href="/users.html">NHÂN VIÊN</a>
+                <a href="/logs.html" class="active">LOGS</a>
+                <a href="/reports.html">BÁO CÁO</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container main-content">
+        <div class="card">
+            <h2>PHIÊN ĐIỂM DANH</h2>
+
+            <div class="filter-section">
+                <div class="form-group">
+                    <label>Ngày bắt đầu:</label>
+                    <input type="date" id="startDate">
+                </div>
+                <div class="form-group">
+                    <label>Ngày kết thúc:</label>
+                    <input type="date" id="endDate">
+                </div>
+                <button class="btn btn-primary" onclick="filterLogs()">LỌC</button>
+                <button class="btn btn-secondary" onclick="resetFilters()">Reset</button>
+            </div>
+
+            <table id="logsTable" class="data-table">
+                <thead>
+                    <tr>
+                        <th>Date/Time</th>
+                        <th>UID</th>
+                        <th>Tên nhân viên</th>
+                        <th>Loại vào/ra</th>
+                        <th>Trạng thái</th>
+                        <th>Lý do</th>
+                    </tr>
+                </thead>
+                <tbody id="logsBody">
+                    <tr><td colspan="6" class="text-center">Loading...</td></tr>
+                </tbody>
+            </table>
+
+            <div class="pagination" id="pagination"></div>
+        </div>
+    </div>
+
+    <script src="/js/api.js"></script>
+    <script>
+        let currentPage = 1;
+        const pageSize = 50;
+
+        window.addEventListener('load', () => loadLogs());
+
+        async function loadLogs() {
+            try {
+                let url = `/api/logs/access?page=${currentPage}&pageSize=${pageSize}`;
+                const startDate = document.getElementById('startDate').value;
+                const endDate = document.getElementById('endDate').value;
+                if (startDate) url += `&startDate=${startDate}`;
+                if (endDate) url += `&endDate=${endDate}`;
+
+                const response = await apiCall('GET', url);
+                displayLogs(response.data);
+                displayPagination(response.pagination);
+            } catch (error) {
+                alert(`Error loading logs: ${error.message}`);
+            }
+        }
+
+        function displayLogs(logs) {
+            const tbody = document.getElementById('logsBody');
+            if (!logs || logs.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center">No logs found</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = logs.map(log => `
+                <tr class="status-${log.status.toLowerCase()}">
+                    <td>${new Date(log.accessTime).toLocaleString()}</td>
+                    <td>${log.uid}</td>
+                    <td>${log.fullName}</td>
+                    <td>${log.accessType}</td>
+                    <td><span class="badge badge-${log.status.toLowerCase()}">${log.status}</span></td>
+                    <td>${log.reason || '-'}</td>
+                </tr>
+            `).join('');
+        }
+
+        function displayPagination(pagination) {
+            const pag = document.getElementById('pagination');
+            if (pagination.totalPages <= 1) {
+                pag.innerHTML = '';
+                return;
+            }
+
+            let html = '';
+            for (let i = 1; i <= pagination.totalPages; i++) {
+                html += `<button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="goToPage(${i})">${i}</button>`;
+            }
+            pag.innerHTML = html;
+        }
+
+        function goToPage(page) {
+            currentPage = page;
+            loadLogs();
+        }
+
+        function filterLogs() {
+            currentPage = 1;
+            loadLogs();
+        }
+
+        function resetFilters() {
+            document.getElementById('startDate').value = '';
+            document.getElementById('endDate').value = '';
+            currentPage = 1;
+            loadLogs();
+        }
+    </script>
+</body>
+</html>
